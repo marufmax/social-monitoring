@@ -1,0 +1,49 @@
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies required for social media APIs
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    git \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Install additional dependencies for collectors
+RUN pip install --no-cache-dir \
+    tweepy==4.14.0 \
+    praw==7.7.1 \
+    linkedin-api==2.0.1 \
+    feedparser==6.0.10 \
+    beautifulsoup4==4.12.2 \
+    selenium==4.16.0
+
+# Copy application code
+COPY collectors/ ./collectors/
+COPY app/ ./app/
+
+# Create directories for logs and data
+RUN mkdir -p /app/logs /app/data
+
+# Create non-root user for security
+RUN useradd --create-home --shell /bin/bash collector && \
+    chown -R collector:collector /app
+USER collector
+
+# Health check for collector service
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD python -c "import redis; r = redis.from_url('${REDIS_URL:-redis://redis:6379}'); r.ping()" || exit 1
+
+# Environment variables for collectors
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+
+# Run collector manager (orchestrates all collector plugins)
+CMD ["python", "-m", "collectors.manager"]
