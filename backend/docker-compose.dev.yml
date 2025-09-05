@@ -82,13 +82,13 @@ services:
       - smm_network
 
   supertokens:
-      image: registry.supertokens.io/supertokens/supertokens-postgresql:9.0
+      image: registry.supertokens.io/supertokens/supertokens-postgresql:11.0.6
       container_name: smm_supertokens_dev
       ports:
         - "3567:3567"
       environment:
         POSTGRESQL_CONNECTION_URI: "postgresql://smm_user:dev_password@postgres:5432/social_monitor"
-        API_KEYS: "dev_api_key_12345"
+        API_KEYS: "dev_apid_key_1234545454545454545"
         DISABLE_TELEMETRY: "true"
       volumes:
         - ./infra/supertokens/config.yml:/usr/lib/supertokens/config.yaml

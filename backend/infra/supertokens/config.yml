@@ -1,14 +1,13 @@
 # SuperTokens configuration for PostgreSQL
 # Reference: https://supertokens.com/docs/community/configuration
+core_config_version: 0
 
 # Database configuration
 postgresql_enable: true
-postgresql_connection_uri: "postgresql://smm_user:dev_password@postgres:5432/social_monitor"
 postgresql_connection_pool_size: 10
 postgresql_connection_timeout: 5000
 
 # API and core settings
-api_keys: "dev_api_key_12345"
 access_token_validity: 3600  # 1 hour in seconds
 refresh_token_validity: 14400  # 4 hours in seconds
 disable_telemetry: true
