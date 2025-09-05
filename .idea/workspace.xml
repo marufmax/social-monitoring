@@ -4,10 +4,20 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="efc0da03-0afe-472f-90b8-7a514de2c6de" name="Changes" comment="setup infra and docker">
+    <list default="true" id="efc0da03-0afe-472f-90b8-7a514de2c6de" name="Changes" comment="added supertokens">
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/social-monitoring.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/social-monitoring.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/docker-compose.dev.yml" beforeDir="false" afterPath="$PROJECT_DIR$/backend/docker-compose.dev.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/infra/supertokens/config.yml" beforeDir="false" afterPath="$PROJECT_DIR$/backend/infra/supertokens/config.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/api/v1/posts.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/api/v1/posts.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/api/v1/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/api/v1/router.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/core/logging.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/core/logging.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/core/middleware.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/core/middleware.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/database.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/database.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/models/post.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/models/post.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/schemas/post.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/schemas/post.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/backend/requirements.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -57,7 +67,7 @@
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "preferences.lookFeel",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -81,7 +91,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1757090147754</updated>
-      <workItem from="1757090148754" duration="10181000" />
+      <workItem from="1757090148754" duration="13421000" />
     </task>
     <task id="LOCAL-00001" summary="init">
       <option name="closed" value="true" />
@@ -99,7 +109,15 @@
       <option name="project" value="LOCAL" />
       <updated>1757106443868</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="added supertokens">
+      <option name="closed" value="true" />
+      <created>1757107238142</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1757107238142</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -108,6 +126,7 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="init" />
     <MESSAGE value="setup infra and docker" />
-    <option name="LAST_COMMIT_MESSAGE" value="setup infra and docker" />
+    <MESSAGE value="added supertokens" />
+    <option name="LAST_COMMIT_MESSAGE" value="added supertokens" />
   </component>
 </project>

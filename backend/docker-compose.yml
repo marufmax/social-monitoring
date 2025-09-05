@@ -151,7 +151,7 @@ services:
         condition: service_healthy
     networks:
       - smm_network
-    restart: unless-stopped
+    restart: no
 
   collectors:
     build:
@@ -180,7 +180,7 @@ services:
         condition: service_healthy
     networks:
       - smm_network
-    restart: unless-stopped
+    restart: no
 
 networks:
   smm_network:
