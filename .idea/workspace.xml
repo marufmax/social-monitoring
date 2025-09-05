@@ -4,14 +4,17 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="efc0da03-0afe-472f-90b8-7a514de2c6de" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/social-monitoring.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/backend/docker-compose.prod.yml" afterDir="false" />
+    <list default="true" id="efc0da03-0afe-472f-90b8-7a514de2c6de" name="Changes" comment="init">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/Dockerfile" beforeDir="false" afterPath="$PROJECT_DIR$/backend/Dockerfile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/Dockerfile.collector" beforeDir="false" afterPath="$PROJECT_DIR$/backend/Dockerfile.collector" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/docker-compose.dev.yml" beforeDir="false" afterPath="$PROJECT_DIR$/backend/docker-compose.dev.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/backend/docker-compose.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/infra/authentik/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/infra/supertokens/config.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/infra/authentik/custom-settings.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/infra/authentik/docker-compose.authentik.yml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/backend/pyproject.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/backend/requirements.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -28,6 +31,18 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "marufmax"
+  }
+}]]></component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/marufmax/social-monitoring.git",
+    "accountId": "0865bca9-759f-4a47-9955-32c7b448bd2e"
+  }
+}]]></component>
   <component name="ProjectColorInfo"><![CDATA[{
   "associatedIndex": 3
 }]]></component>
@@ -73,11 +88,24 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1757090147754</updated>
-      <workItem from="1757090148754" duration="5988000" />
+      <workItem from="1757090148754" duration="9411000" />
     </task>
+    <task id="LOCAL-00001" summary="init">
+      <option name="closed" value="true" />
+      <created>1757102064299</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1757102064299</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="init" />
+    <option name="LAST_COMMIT_MESSAGE" value="init" />
   </component>
 </project>

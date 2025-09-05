@@ -1,5 +1,8 @@
 FROM python:3.11-slim
 
+# Install uv (more efficient than curl install)
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+
 # Set working directory
 WORKDIR /app
 
@@ -13,11 +16,10 @@ RUN apt-get update && apt-get install -y \
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN uv pip install --system --no-cache -r requirements.txt
 
 # Install additional dependencies for collectors
-RUN pip install --no-cache-dir \
+RUN uv pip install --system --no-cache \
     tweepy==4.14.0 \
     praw==7.7.1 \
     linkedin-api==2.0.1 \

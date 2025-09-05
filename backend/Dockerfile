@@ -1,5 +1,8 @@
 FROM python:3.11-slim
 
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+
 # Set working directory
 WORKDIR /app
 
@@ -7,11 +10,16 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
+    libpq-dev \
+    libhiredis-dev \
+    zlib1g-dev \
+    libjpeg-dev \
+    libpng-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN uv pip install --system --no-cache -r requirements.txt
 
 # Copy application code
 COPY . .

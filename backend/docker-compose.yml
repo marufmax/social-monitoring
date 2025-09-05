@@ -7,10 +7,10 @@ services:
     environment:
       POSTGRES_DB: social_monitor
       POSTGRES_USER: smm_user
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?err}
       POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -21,23 +21,25 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
   redis:
-    image: redis/redis-stack:7.2.0-v6
+    image: ${REDIS_IMAGE:-redis:7.2}
     container_name: smm_redis
     ports:
-      - "6379:6379"
-      - "8001:8001"  # RedisInsight
+      - "${REDIS_PORT:-6379}:6379"
+      - "${REDIS_INSIGHT_PORT:-8001}:8001"
     volumes:
       - redis_data:/data
       - ./infra/redis/redis.conf:/usr/local/etc/redis/redis.conf
-    command: redis-server /usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf ${REDIS_AUTH:---requirepass ${REDIS_PASSWORD}}
     networks:
       - smm_network
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "${REDIS_AUTH:---a ${REDIS_PASSWORD}}", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
+
   opensearch:
     image: opensearchproject/opensearch:2.11.0
     container_name: smm_opensearch
@@ -46,9 +48,9 @@ services:
       - node.name=smm-node1
       - discovery.type=single-node
       - bootstrap.memory_lock=true
-      - "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g"
+      - "OPENSEARCH_JAVA_OPTS=${OPENSEARCH_JAVA_OPTS:--Xms1g -Xmx1g}"
       - "DISABLE_INSTALL_DEMO_CONFIG=true"
-      - "DISABLE_SECURITY_PLUGIN=true"
+      - "DISABLE_SECURITY_PLUGIN=${OPENSEARCH_DISABLE_SECURITY:-true}"
     ulimits:
       memlock:
         soft: -1
@@ -57,8 +59,8 @@ services:
         soft: 65536
         hard: 65536
     ports:
-      - "9200:9200"
-      - "9600:9600"
+      - "${OPENSEARCH_PORT:-9200}:9200"
+      - "${OPENSEARCH_PERF_PORT:-9600}:9600"
     volumes:
       - opensearch_data:/usr/share/opensearch/data
     networks:
@@ -68,49 +70,49 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+
   opensearch-dashboards:
     image: opensearchproject/opensearch-dashboards:2.11.0
     container_name: smm_dashboards
     ports:
-      - "5601:5601"
+      - "${DASHBOARDS_PORT:-5601}:5601"
     environment:
       OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
-      DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: "${OPENSEARCH_DISABLE_SECURITY:-true}"
     depends_on:
       - opensearch
     networks:
       - smm_network
 
   supertokens:
-      image: registry.supertokens.io/supertokens/supertokens-postgresql:9.0
-      container_name: smm_supertokens_dev
-      ports:
-        - "3567:3567"
-      environment:
-        POSTGRESQL_CONNECTION_URI: "postgresql://smm_user:dev_password@postgres:5432/social_monitor"
-        API_KEYS: "dev_api_key_12345"
-        DISABLE_TELEMETRY: "true"
-      volumes:
-        - ./infra/supertokens/config.yml:/usr/lib/supertokens/config.yaml
-      depends_on:
-        - postgres
-      networks:
-        - smm_network
-      restart: unless-stopped
+    image: registry.supertokens.io/supertokens/supertokens-postgresql:9.0
+    container_name: smm_supertokens
+    ports:
+      - "${SUPERTOKENS_PORT:-3567}:3567"
+    environment:
+      POSTGRESQL_CONNECTION_URI: "postgresql://smm_user:${POSTGRES_PASSWORD}@postgres:5432/social_monitor"
+      API_KEYS: ${SUPERTOKENS_API_KEYS:?err}
+      DISABLE_TELEMETRY: "true"
+    volumes:
+      - ./infra/supertokens/config.yml:/usr/lib/supertokens/config.yaml
+    depends_on:
+      - postgres
+    networks:
+      - smm_network
+    restart: unless-stopped
 
-  # Main API Service
   api:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: smm_api
     ports:
-      - "8000:8000"
+      - "${API_PORT:-8000}:8000"
     environment:
-      - DATABASE_URL=postgresql://smm_user:${POSTGRES_PASSWORD:-dev_password}@postgres:5432/social_monitor
-      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://smm_user:${POSTGRES_PASSWORD}@postgres:5432/social_monitor
+      - REDIS_URL=redis://${REDIS_AUTH:+:${REDIS_PASSWORD}}@redis:6379
       - OPENSEARCH_URL=http://opensearch:9200
-      - LOG_LEVEL=INFO
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
     volumes:
       - ./app:/app/app
       - ./collectors:/app/collectors
@@ -126,7 +128,6 @@ services:
       - smm_network
     restart: unless-stopped
 
-  # Stream Processor
   processor:
     build:
       context: .
@@ -134,10 +135,10 @@ services:
     container_name: smm_processor
     command: ["python", "-m", "processor.main"]
     environment:
-      - DATABASE_URL=postgresql://smm_user:${POSTGRES_PASSWORD:-dev_password}@postgres:5432/social_monitor
-      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://smm_user:${POSTGRES_PASSWORD}@postgres:5432/social_monitor
+      - REDIS_URL=redis://${REDIS_AUTH:+:${REDIS_PASSWORD}}@redis:6379
       - OPENSEARCH_URL=http://opensearch:9200
-      - LOG_LEVEL=INFO
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
     volumes:
       - ./app:/app/app
       - ./processor:/app/processor
@@ -152,25 +153,23 @@ services:
       - smm_network
     restart: unless-stopped
 
-  # Data Collectors (managed by collector manager)
   collectors:
     build:
       context: .
       dockerfile: Dockerfile.collector
     container_name: smm_collectors
     environment:
-      - DATABASE_URL=postgresql://smm_user:${POSTGRES_PASSWORD:-dev_password}@postgres:5432/social_monitor
-      - REDIS_URL=redis://redis:6379
-      - LOG_LEVEL=INFO
-      # Platform API Keys
-      - TWITTER_API_KEY=${TWITTER_API_KEY:-}
-      - TWITTER_API_SECRET=${TWITTER_API_SECRET:-}
-      - TWITTER_ACCESS_TOKEN=${TWITTER_ACCESS_TOKEN:-}
-      - TWITTER_ACCESS_SECRET=${TWITTER_ACCESS_SECRET:-}
-      - LINKEDIN_CLIENT_ID=${LINKEDIN_CLIENT_ID:-}
-      - LINKEDIN_CLIENT_SECRET=${LINKEDIN_CLIENT_SECRET:-}
-      - REDDIT_CLIENT_ID=${REDDIT_CLIENT_ID:-}
-      - REDDIT_CLIENT_SECRET=${REDDIT_CLIENT_SECRET:-}
+      - DATABASE_URL=postgresql://smm_user:${POSTGRES_PASSWORD}@postgres:5432/social_monitor
+      - REDIS_URL=redis://${REDIS_AUTH:+:${REDIS_PASSWORD}}@redis:6379
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - TWITTER_API_KEY=${TWITTER_API_KEY:?err}
+      - TWITTER_API_SECRET=${TWITTER_API_SECRET:?err}
+      - TWITTER_ACCESS_TOKEN=${TWITTER_ACCESS_TOKEN:?err}
+      - TWITTER_ACCESS_SECRET=${TWITTER_ACCESS_SECRET:?err}
+      - LINKEDIN_CLIENT_ID=${LINKEDIN_CLIENT_ID:?err}
+      - LINKEDIN_CLIENT_SECRET=${LINKEDIN_CLIENT_SECRET:?err}
+      - REDDIT_CLIENT_ID=${REDDIT_CLIENT_ID:?err}
+      - REDDIT_CLIENT_SECRET=${REDDIT_CLIENT_SECRET:?err}
     volumes:
       - ./collectors:/app/collectors
       - ./app:/app/app

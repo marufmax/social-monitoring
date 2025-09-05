@@ -1,11 +1,11 @@
 # FastAPI and Core
 fastapi==0.109.0
-uvicorn[standard]==0.27.0
+uvicorn[standard]==0.35.0
 python-multipart==0.0.6
 python-jose[cryptography]==3.3.0
 
 # SuperTokens Authentication
-supertokens-python==0.21.1
+supertokens-python==0.30.2
 
 # Database
 sqlalchemy==2.0.25
@@ -17,7 +17,7 @@ pgvector==0.2.4
 
 # Redis
 redis[hiredis]==5.0.1
-redis-om==0.2.1
+redis-om==0.3.5
 
 # OpenSearch
 opensearch-py==2.4.2
@@ -32,16 +32,15 @@ spacy==3.7.2
 # HTTP Clients for Social Media APIs
 httpx==0.26.0
 tweepy==4.14.0
-praw==7.7.1  # Reddit
+praw==7.7.1
 linkedin-api==2.0.1
 
 # Background Tasks & Async
 celery[redis]==5.3.6
-asyncio==3.4.3
 aiofiles==23.2.1
 
 # Validation & Serialization
-pydantic==2.5.3
+pydantic==2.11.7
 pydantic-settings==2.1.0
 
 # Utilities
