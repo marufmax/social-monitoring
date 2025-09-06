@@ -14,9 +14,15 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN uv pip install --system --no-cache -r requirements.txt
+# Copy dependency files first for better caching
+COPY pyproject.toml uv.lock* ./
+
+# Generate lock file if it doesn't exist and install dependencies
+RUN if [ -f uv.lock ]; then \
+        uv sync --frozen --no-cache; \
+    else \
+        uv lock && uv sync --no-cache; \
+    fi
 
 # Install additional dependencies for collectors
 RUN uv pip install --system --no-cache \

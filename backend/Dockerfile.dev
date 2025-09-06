@@ -27,10 +27,9 @@ FROM python:3.11-slim as runtime
 
 # Install runtime system dependencies only
 RUN apt-get update && apt-get install -y \
-    libpq5 \
-    libhiredis0.14 \
-    libjpeg62-turbo \
-    libpng16-16 \
+    build-essential \
+    curl \
+    pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user first for better security
@@ -59,10 +58,9 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
 
 EXPOSE 8000
 
-# Run with optimized uvicorn settings for production
+# For development (auto-reload)
 CMD ["uvicorn", "app.main:app", \
     "--host", "0.0.0.0", \
     "--port", "8000", \
-    "--workers", "4", \
-    "--timeout-keep-alive", "60", \
-    "--no-server-header"]
+    "--reload", \
+    "--reload-dir", "/app"]
