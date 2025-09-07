@@ -39,3 +39,13 @@ app.include_router(api_router, prefix="/api/v1")
 @app.get("/")
 async def root():
     return {"status": "ok", "message": "Social Media Monitoring API is running"}
+
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "database": "to implement",
+        "redis": "to implement",
+        "opensearch": "to implement",
+        "collectors": "to implement",
+    }

@@ -6,8 +6,6 @@ import json
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from app.database import get_database, get_database_url
-from app.models.post import Post
-from app.models.campaign import Campaign
 from app.models.user import User
 
 
