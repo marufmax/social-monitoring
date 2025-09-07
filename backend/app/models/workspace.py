@@ -4,12 +4,14 @@ from typing import Optional, Dict, Any, List
 from decimal import Decimal
 from sqlalchemy import (
     String, TEXT, Boolean, TIMESTAMP, DECIMAL, Integer,
-    ForeignKey, UniqueConstraint, CheckConstraint
+    ForeignKey, UniqueConstraint, CheckConstraint, text
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from .base import BaseModel
+from sqlalchemy.sql import func
+from .base import Base, BaseModel
 from app.models import Monitor
+from app.models.mention_assignment import MentionAssignment
 
 
 class Workspace(BaseModel):
@@ -39,10 +41,7 @@ class Workspace(BaseModel):
 
     settings: Mapped[Dict[str, Any]] = mapped_column(
         JSONB,
-        default={
-            "data_retention_days": 90,
-            "auto_assignment": False
-        },
+        server_default=text("""'{"data_retention_days": 90, "auto_assignment": false}'::jsonb"""),
         nullable=False,
     )
 
@@ -65,6 +64,10 @@ class Workspace(BaseModel):
         uselist=False,
     )
 
+    mention_assignments: Mapped[List["MentionAssignment"]] = relationship(
+        "MentionAssignment", back_populates="workspace"
+    )
+
     __table_args__ = (
         CheckConstraint(
             "slug ~ '^[a-z0-9-]+$'",
@@ -73,66 +76,44 @@ class Workspace(BaseModel):
     )
 
 
-class WorkspaceMember(BaseModel):
-    """Workspace membership with roles and permissions."""
+class WorkspaceMember(Base):
+    """Workspace membership with roles and permissions. Corresponds to workspace_members DDL."""
 
     __tablename__ = "workspace_members"
 
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("uuid_generate_v4()")
+    )
     workspace_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("workspaces.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
     )
-
     user_id: Mapped[str] = mapped_column(
-        String(128),
-        ForeignKey("app_users.user_id", ondelete="RESTRICT"),
-        nullable=False,
-        index=True,
+        String(128), ForeignKey("app_users.user_id", ondelete="RESTRICT"), nullable=False
     )
-
     role: Mapped[str] = mapped_column(
-        String(20),
-        default="member",
-        nullable=False,
-        index=True,
+        String(20), server_default=text("'member'"), nullable=False
     )
-
     permissions: Mapped[Dict[str, Any]] = mapped_column(
         JSONB,
-        default={
-            "monitors": {"create": True, "edit": True, "delete": False},
-            "mentions": {"assign": True, "respond": True},
-            "analytics": {"view": True},
-            "billing": {"view": False}
-        },
+        server_default=text("""
+            '{"monitors": {"create": true, "edit": true, "delete": false},
+              "mentions": {"assign": true, "respond": true},
+              "analytics": {"view": true},
+              "billing": {"view": false}}'::jsonb
+        """),
         nullable=False,
     )
-
     joined_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True),
-        default=datetime.utcnow,
-        nullable=False,
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
 
     # Relationships
-    workspace: Mapped["Workspace"] = relationship(
-        "Workspace",
-        back_populates="members",
-    )
-
-    user: Mapped["AppUser"] = relationship(
-        "AppUser",
-        back_populates="workspace_memberships",
-    )
+    workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="members")
+    user: Mapped["AppUser"] = relationship("AppUser", back_populates="workspace_memberships")
 
     __table_args__ = (
         UniqueConstraint("workspace_id", "user_id"),
-        CheckConstraint(
-            "role IN ('owner', 'admin', 'member', 'viewer')",
-            name="check_member_role"
-        ),
+        CheckConstraint("role IN ('owner', 'admin', 'member', 'viewer')", name="check_member_role"),
     )
 
 
@@ -160,29 +141,20 @@ class SubscriptionPlan(BaseModel):
 
     limits: Mapped[Dict[str, Any]] = mapped_column(
         JSONB,
-        default={
-            "monitors": 5,
-            "keywords_per_monitor": 10,
-            "mentions_per_month": 1000,
-            "team_members": 3,
-            "api_calls_per_month": 10000,
-            "data_retention_days": 30
-        },
+        server_default=text("""
+            '{"monitors": 5, "keywords_per_monitor": 10, "mentions_per_month": 1000,
+              "team_members": 3, "api_calls_per_month": 10000, "data_retention_days": 30}'::jsonb
+        """),
         nullable=False,
     )
 
     features: Mapped[List[str]] = mapped_column(
         ARRAY(TEXT),
-        default=["basic_monitoring", "email_alerts"],
+        server_default=text("ARRAY['basic_monitoring', 'email_alerts']"),
         nullable=False,
     )
 
-    active: Mapped[bool] = mapped_column(
-        Boolean,
-        default=True,
-        nullable=False,
-        index=True,
-    )
+    active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
 
 
 class WorkspaceSubscription(BaseModel):
@@ -206,10 +178,7 @@ class WorkspaceSubscription(BaseModel):
     )
 
     status: Mapped[str] = mapped_column(
-        String(20),
-        default="active",
-        nullable=False,
-        index=True,
+        String(20), server_default=text("'active'"), nullable=False
     )
 
     current_period_start: Mapped[datetime] = mapped_column(
@@ -273,12 +242,9 @@ class UsageTracking(BaseModel):
 
     usage_data: Mapped[Dict[str, Any]] = mapped_column(
         JSONB,
-        default={
-            "mentions_collected": 0,
-            "api_calls": 0,
-            "alerts_sent": 0,
-            "active_monitors": 0
-        },
+        server_default=text("""
+            '{"mentions_collected": 0, "api_calls": 0, "alerts_sent": 0, "active_monitors": 0}'::jsonb
+        """),
         nullable=False,
     )
 
