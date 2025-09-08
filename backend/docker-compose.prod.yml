@@ -80,7 +80,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.api.prod
     container_name: smm_api_prod
     ports:
       - "8000:8000"

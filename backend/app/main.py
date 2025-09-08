@@ -2,9 +2,8 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from app.core.middleware import LoggingMiddleware
 from app.api.v1.router import api_router
-from app.database import Base, engine, AsyncSessionLocal
+from app.database import async_engine as engine, AsyncSessionLocal, Base
 from sqlalchemy import text
-import asyncio
 
 
 @asynccontextmanager
@@ -40,12 +39,3 @@ app.include_router(api_router, prefix="/api/v1")
 async def root():
     return {"status": "ok", "message": "Social Media Monitoring API is running"}
 
-@app.get("/health")
-async def health_check():
-    return {
-        "status": "healthy",
-        "database": "to implement",
-        "redis": "to implement",
-        "opensearch": "to implement",
-        "collectors": "to implement",
-    }

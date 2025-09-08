@@ -101,15 +101,13 @@ services:
   api:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile.api.dev
     container_name: smm_api
     ports:
       - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql://smm_user:${POSTGRES_PASSWORD:-dev_password}@postgres:5432/social_monitor
-      - REDIS_URL=redis://redis:6379
-      - OPENSEARCH_URL=http://opensearch:9200
-      - LOG_LEVEL=INFO
+      - "5678:5678"
+    env_file:
+      - .env
     volumes:
       - ./app:/app/app
       - ./collectors:/app/collectors
@@ -129,7 +127,7 @@ services:
   processor:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile.api.dev
     container_name: smm_processor
     command: ["python", "-m", "processor.main"]
     environment:
