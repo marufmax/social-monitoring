@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
+
+from app.api.universal.router import api_universal_router
 from app.core.middleware import LoggingMiddleware
-from app.api.v1.router import api_router
+from app.api.v1.router import apiV1_router
 from app.database import async_engine as engine, AsyncSessionLocal, Base
 from sqlalchemy import text
 
@@ -31,7 +33,8 @@ app = FastAPI(
 app.add_middleware(LoggingMiddleware)
 
 # Routes
-app.include_router(api_router, prefix="/api/v1")
+app.include_router(apiV1_router, prefix="/api/v1")
+app.include_router(api_universal_router)
 
 
 # Health check

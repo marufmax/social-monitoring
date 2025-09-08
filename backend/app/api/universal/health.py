@@ -5,13 +5,14 @@ import asyncpg
 from opensearchpy import AsyncOpenSearch
 
 from app.config import Settings
+from app.database import ASYNC_DATABASE_URL
 
 health_router = APIRouter()
 # --- Health check helpers ---
 
 async def check_database():
     try:
-        conn = await asyncpg.connect(Settings.SYNC_DATABASE_URL)
+        conn = await asyncpg.connect(ASYNC_DATABASE_URL)
         await conn.execute("SELECT 1;")
         await conn.close()
         return "ok"
