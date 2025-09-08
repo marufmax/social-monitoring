@@ -9,7 +9,7 @@ from sqlalchemy import (
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from .base import BaseModel
+from .base import BaseModel, Base
 
 
 class SocialUser(BaseModel):

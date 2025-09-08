@@ -11,7 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from .base import Base, BaseModel
 from app.models import Monitor
-from app.models.mention_assignment import MentionAssignment
+from app.models.collaboration import MentionAssignment
 
 
 class Workspace(BaseModel):
@@ -64,7 +64,7 @@ class Workspace(BaseModel):
         uselist=False,
     )
 
-    mention_assignments: Mapped[List["MentionAssignment"]] = relationship(
+    mention_assignments: Mapped[List[MentionAssignment]] = relationship(
         "MentionAssignment", back_populates="workspace"
     )
 

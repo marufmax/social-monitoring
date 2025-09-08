@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from .platform import Platform
     from .social import SocialUser
     from .monitor import Monitor
-    from .mention_assignment import MentionAssignment, MentionResponse
+    from .collaboration import MentionAssignment, MentionResponse
 
 
 class Mention(BaseModel):
