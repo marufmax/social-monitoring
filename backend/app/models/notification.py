@@ -170,7 +170,7 @@ class NotificationQueue(BaseModel):
         nullable=True,
     )
 
-    metadata: Mapped[Dict[str, Any]] = mapped_column(
+    notification_metadata: Mapped[Dict[str, Any]] = mapped_column(
         JSONB,
         default={},
         nullable=False,

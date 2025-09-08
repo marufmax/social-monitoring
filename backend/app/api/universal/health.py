@@ -4,7 +4,7 @@ import redis.asyncio as pyredis
 import asyncpg
 from opensearchpy import AsyncOpenSearch
 
-from app.config import Settings
+from app.config import Settings, settings
 from app.database import ASYNC_DATABASE_URL
 
 health_router = APIRouter()
@@ -33,7 +33,7 @@ async def check_redis():
 async def check_opensearch() -> str:
     try:
         client = AsyncOpenSearch(
-            hosts=["http://localhost:9200"],
+            hosts=[Settings.OPENSEARCH_HOST],
             http_compress=True,
         )
         health = await client.cluster.health()

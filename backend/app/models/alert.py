@@ -2,7 +2,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List, Optional, Dict, Any, TYPE_CHECKING
 import uuid
-from sqlalchemy import String, Text, DateTime, ForeignKey, CheckConstraint, text
+from sqlalchemy import String, Text, DateTime, ForeignKey, CheckConstraint, text, Integer
 from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
@@ -77,7 +77,7 @@ class Alert(Base):
     mention_ids: Mapped[List[uuid.UUID]] = mapped_column(
         ARRAY(UUID(as_uuid=True)), server_default=text("ARRAY[]::UUID[]")
     )
-    metadata: Mapped[Dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
+    alert_metadata: Mapped[Dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
     triggered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     resolved_by: Mapped[Optional[str]] = mapped_column(String(128), ForeignKey("app_users.user_id"), nullable=True)
