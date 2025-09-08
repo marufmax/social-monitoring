@@ -1,4 +1,49 @@
 services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api.dev
+    container_name: smm_api
+    ports:
+      - "8000:8000"
+      - "5678:5678"
+    env_file:
+      - .env
+    volumes:
+      - ./app:/app/app
+      - ./collectors:/app/collectors
+      - ./processor:/app/processor
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+      migration:
+        condition: service_healthy
+    networks:
+      - smm_network
+    restart: no
+
+  migration:
+    build:
+      context: .
+      dockerfile: Dockerfile.api.dev
+    container_name: smm_migration
+    command: [ "alembic", "upgrade", "head" ]
+    environment:
+      - DATABASE_URL=postgresql://smm_user:${POSTGRES_PASSWORD:-dev_password}@postgres:5432/social_monitor
+    volumes:
+      - ./app:/app/app
+      - ./alembic:/app/alembic
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - smm_network
+    restart: "no"
+
   postgres:
     image: pgvector/pgvector:pg15
     container_name: smm_postgres
@@ -96,32 +141,6 @@ services:
       networks:
         - smm_network
       restart: unless-stopped
-
-  # Main API Service
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile.api.dev
-    container_name: smm_api
-    ports:
-      - "8000:8000"
-      - "5678:5678"
-    env_file:
-      - .env
-    volumes:
-      - ./app:/app/app
-      - ./collectors:/app/collectors
-      - ./processor:/app/processor
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      opensearch:
-        condition: service_healthy
-    networks:
-      - smm_network
-    restart: no
 
   # Stream Processor
   processor:
