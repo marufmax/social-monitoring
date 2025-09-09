@@ -1,10 +1,12 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
+
+from app.api.universal.router import api_universal_router
 from app.core.middleware import LoggingMiddleware
-from app.api.v1.router import api_router
-from app.database import Base, engine, AsyncSessionLocal
+from app.api.v1.router import apiV1_router
+from app.database import async_engine as engine, AsyncSessionLocal, Base
 from sqlalchemy import text
-import asyncio
+from app import models
 
 
 @asynccontextmanager
@@ -32,7 +34,8 @@ app = FastAPI(
 app.add_middleware(LoggingMiddleware)
 
 # Routes
-app.include_router(api_router, prefix="/api/v1")
+app.include_router(apiV1_router, prefix="/api/v1")
+app.include_router(api_universal_router)
 
 
 # Health check
@@ -40,12 +43,3 @@ app.include_router(api_router, prefix="/api/v1")
 async def root():
     return {"status": "ok", "message": "Social Media Monitoring API is running"}
 
-@app.get("/health")
-async def health_check():
-    return {
-        "status": "healthy",
-        "database": "to implement",
-        "redis": "to implement",
-        "opensearch": "to implement",
-        "collectors": "to implement",
-    }

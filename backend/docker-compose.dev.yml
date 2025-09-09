@@ -1,4 +1,49 @@
 services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api.dev
+    container_name: smm_api
+    ports:
+      - "8000:8000"
+      - "5678:5678"
+    env_file:
+      - .env
+    volumes:
+      - ./app:/app/app
+      - ./collectors:/app/collectors
+      - ./processor:/app/processor
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+      migrate:
+        condition: service_healthy
+    networks:
+      - smm_network
+    restart: no
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.api.dev
+    container_name: smm_migration
+    command: [ "alembic", "upgrade", "head" ]
+    environment:
+      - DATABASE_URL=postgresql://smm_user:${POSTGRES_PASSWORD:-dev_password}@postgres:5432/social_monitor
+    volumes:
+      - ./app:/app/app
+      - ./migrations:/app/migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - smm_network
+    restart: "no"
+
   postgres:
     image: pgvector/pgvector:pg15
     container_name: smm_postgres
@@ -97,46 +142,15 @@ services:
         - smm_network
       restart: unless-stopped
 
-  # Main API Service
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-    container_name: smm_api
-    ports:
-      - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql://smm_user:${POSTGRES_PASSWORD:-dev_password}@postgres:5432/social_monitor
-      - REDIS_URL=redis://redis:6379
-      - OPENSEARCH_URL=http://opensearch:9200
-      - LOG_LEVEL=INFO
-    volumes:
-      - ./app:/app/app
-      - ./collectors:/app/collectors
-      - ./processor:/app/processor
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      opensearch:
-        condition: service_healthy
-    networks:
-      - smm_network
-    restart: no
-
   # Stream Processor
   processor:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile.api.dev
     container_name: smm_processor
     command: ["python", "-m", "processor.main"]
-    environment:
-      - DATABASE_URL=postgresql://smm_user:${POSTGRES_PASSWORD:-dev_password}@postgres:5432/social_monitor
-      - REDIS_URL=redis://redis:6379
-      - OPENSEARCH_URL=http://opensearch:9200
-      - LOG_LEVEL=INFO
+    env_file:
+      - .env
     volumes:
       - ./app:/app/app
       - ./processor:/app/processor
@@ -157,19 +171,8 @@ services:
       context: .
       dockerfile: Dockerfile.collector
     container_name: smm_collectors
-    environment:
-      - DATABASE_URL=postgresql://smm_user:${POSTGRES_PASSWORD:-dev_password}@postgres:5432/social_monitor
-      - REDIS_URL=redis://redis:6379
-      - LOG_LEVEL=INFO
-      # Platform API Keys
-      - TWITTER_API_KEY=${TWITTER_API_KEY:-}
-      - TWITTER_API_SECRET=${TWITTER_API_SECRET:-}
-      - TWITTER_ACCESS_TOKEN=${TWITTER_ACCESS_TOKEN:-}
-      - TWITTER_ACCESS_SECRET=${TWITTER_ACCESS_SECRET:-}
-      - LINKEDIN_CLIENT_ID=${LINKEDIN_CLIENT_ID:-}
-      - LINKEDIN_CLIENT_SECRET=${LINKEDIN_CLIENT_SECRET:-}
-      - REDDIT_CLIENT_ID=${REDDIT_CLIENT_ID:-}
-      - REDDIT_CLIENT_SECRET=${REDDIT_CLIENT_SECRET:-}
+    env_file:
+      - .env
     volumes:
       - ./collectors:/app/collectors
       - ./app:/app/app

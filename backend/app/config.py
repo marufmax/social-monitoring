@@ -16,8 +16,6 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
-    DATABASE_URL: str = os.getenv("DATABASE_URL",
-                                  "postgresql+psycopg2://postgres:postgres@localhost:5432/social_monitoring")
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-here")
     APP_NAME: str = "Social Media Monitor"
     VERSION: str = "0.1.0"
@@ -26,13 +24,8 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = Field(default="development", description="Environment name")
 
     # Database Settings
-    DATABASE_URL: str = Field(
-        description="Synchronous database URL for migrations",
-    )
-    ASYNC_DATABASE_URL: str = Field(
-        default="",
-        description="Async database URL for application"
-    )
+    DATABASE_URL: str = os.getenv("DATABASE_URL",
+                                  "postgresql+psycopg://postgres:postgres@localhost:5432/social_monitoring")
 
     # Redis Settings
     REDIS_URL: str = Field(
@@ -59,9 +52,6 @@ class Settings(BaseSettings):
     def is_development(self) -> bool:
         """Check if running in development environment."""
         return self.ENVIRONMENT.lower() == "development"
-
-    class Config:
-        case_sensitive = True
 
 
 
