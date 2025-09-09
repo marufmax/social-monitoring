@@ -4,6 +4,7 @@ core_config_version: 0
 
 # Database configuration
 postgresql_enable: true
+postgresql_connection_uri: "postgresql://smm_user:dev_password@postgres:5432/social_monitor?currentSchema=auth"
 postgresql_connection_pool_size: 10
 postgresql_connection_timeout: 5000
 

@@ -644,8 +644,6 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['alert_id'], ['alerts.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
-    op.drop_index(op.f('ix_posts_id'), table_name='posts')
-    op.drop_table('posts')
     # ### end Alembic commands ###
 
 
