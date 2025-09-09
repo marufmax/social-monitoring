@@ -20,13 +20,13 @@ services:
         condition: service_healthy
       opensearch:
         condition: service_healthy
-      migration:
+      migrate:
         condition: service_healthy
     networks:
       - smm_network
     restart: no
 
-  migration:
+  migrate:
     build:
       context: .
       dockerfile: Dockerfile.api.dev
@@ -36,7 +36,7 @@ services:
       - DATABASE_URL=postgresql://smm_user:${POSTGRES_PASSWORD:-dev_password}@postgres:5432/social_monitor
     volumes:
       - ./app:/app/app
-      - ./alembic:/app/alembic
+      - ./migrations:/app/migrations
     depends_on:
       postgres:
         condition: service_healthy
@@ -149,11 +149,8 @@ services:
       dockerfile: Dockerfile.api.dev
     container_name: smm_processor
     command: ["python", "-m", "processor.main"]
-    environment:
-      - DATABASE_URL=postgresql://smm_user:${POSTGRES_PASSWORD:-dev_password}@postgres:5432/social_monitor
-      - REDIS_URL=redis://redis:6379
-      - OPENSEARCH_URL=http://opensearch:9200
-      - LOG_LEVEL=INFO
+    env_file:
+      - .env
     volumes:
       - ./app:/app/app
       - ./processor:/app/processor
@@ -174,19 +171,8 @@ services:
       context: .
       dockerfile: Dockerfile.collector
     container_name: smm_collectors
-    environment:
-      - DATABASE_URL=postgresql://smm_user:${POSTGRES_PASSWORD:-dev_password}@postgres:5432/social_monitor
-      - REDIS_URL=redis://redis:6379
-      - LOG_LEVEL=INFO
-      # Platform API Keys
-      - TWITTER_API_KEY=${TWITTER_API_KEY:-}
-      - TWITTER_API_SECRET=${TWITTER_API_SECRET:-}
-      - TWITTER_ACCESS_TOKEN=${TWITTER_ACCESS_TOKEN:-}
-      - TWITTER_ACCESS_SECRET=${TWITTER_ACCESS_SECRET:-}
-      - LINKEDIN_CLIENT_ID=${LINKEDIN_CLIENT_ID:-}
-      - LINKEDIN_CLIENT_SECRET=${LINKEDIN_CLIENT_SECRET:-}
-      - REDDIT_CLIENT_ID=${REDDIT_CLIENT_ID:-}
-      - REDDIT_CLIENT_SECRET=${REDDIT_CLIENT_SECRET:-}
+    env_file:
+      - .env
     volumes:
       - ./collectors:/app/collectors
       - ./app:/app/app
