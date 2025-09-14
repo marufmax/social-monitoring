@@ -7,20 +7,18 @@ from fastapi import APIRouter, Request, Response, HTTPException, status, Depends
 from supertokens_python.recipe.session.framework.fastapi import verify_session
 from supertokens_python.recipe.session import SessionContainer
 from supertokens_python.recipe.session.asyncio import revoke_session
-from app.schemas.auth import (
-    SignUpRequest,
-    SignInRequest,
-    UserResponse,
-    UpdateProfileRequest,
-)
+from app.schemas.auth import SignUpRequest, SignInRequest
 from app.services.auth_service import AuthService
-from app.core.auth_dependencies import CurrentUserDep
-from app.core.unit_of_work import AbstractUnitOfWork, get_unit_of_work
+from app.core.unit_of_work import (
+    AbstractUnitOfWork,
+    get_unit_of_work,
+    get_unit_of_work_dependency,
+)
 from app.core.exceptions import AuthenticationError, ValidationError
 import structlog
 
 logger = structlog.get_logger()
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+router = APIRouter(tags=["Authentication"])
 
 
 @router.post("/signup", response_model=Dict[str, Any])
@@ -28,7 +26,7 @@ async def signup(
     request: Request,
     response: Response,
     signup_data: SignUpRequest,
-    uow: AbstractUnitOfWork = Depends(get_unit_of_work),
+    uow: AbstractUnitOfWork = Depends(get_unit_of_work_dependency),
 ):
     """Register new user with email and password"""
     try:
@@ -103,4 +101,3 @@ async def signout(session: SessionContainer = Depends(verify_session())):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Sign out failed"
         )
-

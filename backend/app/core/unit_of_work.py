@@ -1,8 +1,10 @@
 """
-Updated Unit of Work with workspace repository
+Unit of Work with workspace repository
 """
+
 from abc import ABC, abstractmethod
-from typing import AsyncContextManager
+from typing import AsyncGenerator
+from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_async_session
 from app.repositories.user_repository import UserRepository
@@ -10,6 +12,7 @@ from app.repositories.workspace_repository import WorkspaceRepository
 import structlog
 
 logger = structlog.get_logger()
+
 
 class AbstractUnitOfWork(ABC):
     """Abstract Unit of Work interface"""
@@ -28,8 +31,17 @@ class AbstractUnitOfWork(ABC):
         await self.close()
 
     @abstractmethod
+    async def commit(self):
+        pass
+
+    @abstractmethod
+    async def rollback(self):
+        pass
+
+    @abstractmethod
     async def close(self):
         pass
+
 
 class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
     """SQLAlchemy implementation of Unit of Work"""
@@ -53,8 +65,24 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
     async def close(self):
         await self.session.close()
 
-async def get_unit_of_work() -> AsyncContextManager[AbstractUnitOfWork]:
-    """Get Unit of Work instance"""
-    async with get_async_session() as session:
-        yield SqlAlchemyUnitOfWork(session)
 
+@asynccontextmanager
+async def get_unit_of_work() -> AsyncGenerator[AbstractUnitOfWork, None]:
+    """Get Unit of Work instance as async context manager"""
+    async with get_async_session() as session:
+        uow = SqlAlchemyUnitOfWork(session)
+        try:
+            async with uow:
+                yield uow
+        except Exception:
+            # Exception handling is done in __aexit__
+            raise
+
+
+async def get_unit_of_work_dependency() -> AbstractUnitOfWork:
+    """
+    FastAPI dependency for Unit of Work
+    Use this with Depends() in your route handlers
+    """
+    async with get_async_session() as session:
+        return SqlAlchemyUnitOfWork(session)

@@ -10,7 +10,8 @@ from app.core.unit_of_work import AbstractUnitOfWork, get_unit_of_work
 import structlog
 
 logger = structlog.get_logger()
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+router = APIRouter(prefix="/auth", tags=["User"])
+
 
 @router.get("/me", response_model=UserResponse)
 async def get_profile(current_user: CurrentUserDep):
