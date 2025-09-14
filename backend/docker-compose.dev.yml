@@ -20,11 +20,9 @@ services:
         condition: service_healthy
       opensearch:
         condition: service_healthy
-      migrate:
-        condition: service_healthy
     networks:
       - smm_network
-    restart: no
+    restart: "no"
 
   migrate:
     build:

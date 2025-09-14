@@ -1,18 +1,28 @@
 import uuid
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from enum import Enum
+from typing import Optional, Dict, Any, List, TYPE_CHECKING
 from decimal import Decimal
 from sqlalchemy import (
-    String, TEXT, Boolean, TIMESTAMP, DECIMAL, Integer,
+    String, TEXT, Boolean, TIMESTAMP, DECIMAL,
     ForeignKey, UniqueConstraint, CheckConstraint, text
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
+from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from .base import Base, BaseModel
 from app.models.monitor import Monitor
 from app.models.collaboration import MentionAssignment
 
+if TYPE_CHECKING:
+    from .user import AppUser
+
+class WorkspaceRole(str, Enum):
+    OWNER = "owner"
+    ADMIN = "admin"
+    MEMBER = "member"
+    VIEWER = "viewer"
 
 class Workspace(BaseModel):
     """Workspace for team collaboration."""
@@ -40,9 +50,9 @@ class Workspace(BaseModel):
     )
 
     settings: Mapped[Dict[str, Any]] = mapped_column(
-        JSONB,
-        server_default=text("""'{"data_retention_days": 90, "auto_assignment": false}'::jsonb"""),
-        nullable=False,
+        MutableDict.as_mutable(JSONB),
+        server_default=text("'{}'::jsonb"),
+        nullable=False
     )
 
     # Relationships
@@ -75,6 +85,10 @@ class Workspace(BaseModel):
         ),
     )
 
+    @property
+    def member_count(self) -> int:
+        """Return the number of members in the workspace."""
+        return len(self.members) if self.members else 0
 
 class WorkspaceMember(Base):
     """Workspace membership with roles and permissions. Corresponds to workspace_members DDL."""

@@ -1,5 +1,4 @@
 from __future__ import annotations
-import uuid
 from typing import Optional, Dict, Any, List, TYPE_CHECKING
 from datetime import datetime
 from sqlalchemy import String, TIMESTAMP, Boolean, TEXT, ForeignKey, text
@@ -8,11 +7,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from .base import Base, TimestampMixin
 
-from .workspace import WorkspaceMember
 from .monitor import Monitor
 from .alert import AlertRule, Alert
 from .collaboration import MentionAssignment, MentionResponse
 
+if TYPE_CHECKING:
+    from .workspace import Workspace, WorkspaceMember
 
 class SuperTokensUser(Base):
     """SuperTokens user integration table. Corresponds to supertokens_users DDL."""
@@ -51,7 +51,6 @@ class AppUser(Base, TimestampMixin):
         primary_key=True,
     )
     name: Mapped[str] = mapped_column(TEXT, nullable=False)
-    display_name: Mapped[Optional[str]] = mapped_column(TEXT, nullable=True)
     timezone: Mapped[str] = mapped_column(
         String(50), server_default=text("'UTC'"), nullable=False
     )
@@ -79,12 +78,12 @@ class AppUser(Base, TimestampMixin):
         "SuperTokensUser", back_populates="app_user"
     )
     workspace_memberships: Mapped[List[WorkspaceMember]] = relationship(
-        "WorkspaceMember", back_populates="user", cascade="all, delete-orphan"
+        "WorkspaceMember", back_populates="user", cascade="all, delete-orphan", lazy="selectin"
     )
 
     # --- Relationships to other models ---
     monitors_created: Mapped[List[Monitor]] = relationship(
-        "Monitor", foreign_keys=[Monitor.created_by], back_populates="creator"
+        "Monitor", foreign_keys=[Monitor.created_by], back_populates="creator", lazy="selectin"
     )
     alert_rules_created: Mapped[List[AlertRule]] = relationship(
         "AlertRule", foreign_keys=[AlertRule.created_by], back_populates="creator"
@@ -101,3 +100,33 @@ class AppUser(Base, TimestampMixin):
     mention_responses: Mapped[List[MentionResponse]] = relationship(
         "MentionResponse", foreign_keys=[MentionResponse.responded_by], back_populates="responder"
     )
+
+    @property
+    def default_workspace(self) -> Optional[Workspace]:
+        """Get the user's default workspace membership."""
+        if self.workspace_memberships:
+            return self.workspace_memberships[0].workspace
+        return None
+
+    def get_workspace_role(self, workspace_id: str) -> Optional[str]:
+        """Get the user's role in a specific workspace."""
+        for membership in self.workspace_memberships:
+            if str(membership.workspace_id) == workspace_id:
+                return membership.role
+        return None
+
+    def get_workspace_permissions(self, workspace_id: str) -> Dict[str, Any]:
+        """
+        Get the user's permissions in a specific workspace based on their role.
+
+        Args:
+            workspace_id (str): The ID of the workspace to check permissions for.
+
+        Returns:
+            list[str]: A list of permissions for the user in the specified workspace.
+            Returns an empty list if no permissions are found.
+        """
+        for membership in self.workspace_memberships:
+            if str(membership.workspace_id) == workspace_id:
+                return membership.permissions
+        return {}

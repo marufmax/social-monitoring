@@ -35,7 +35,7 @@ class Settings(BaseSettings):
 
     # OpenSearch Settings
     OPENSEARCH_URL: str = Field(
-        default="http://localhost:9200",
+        default="http://opensearch:9200",
         description="OpenSearch connection URL"
     )
     OPENSEARCH_INDEX_PREFIX: str = Field(

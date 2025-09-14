@@ -21,53 +21,43 @@ dependencies = [
     "uvicorn[standard]==0.35.0",
     "python-multipart==0.0.20",
     "python-jose[cryptography]==3.5.0",
-
     # SuperTokens Authentication
     "supertokens-python==0.30.2",
-
     # Database
     "sqlalchemy==2.0.43",
     "asyncpg==0.30.0",
     "psycopg[binary,pool]==3.2.9",
     "alembic==1.16.5",
-
     # PostgreSQL Extensions
     "pgvector==0.4.1",
-
     # Redis
     "redis[hiredis]==5.0.1",
     "redis-om==0.3.5",
-
     # OpenSearch
     "opensearch-py==3.0.0",
-
     # Data Processing
     "pandas==2.3.2",
     "numpy==2.3.2",
     "scikit-learn==1.7.1",
     "nltk==3.9.1",
     "spacy==3.8.7",
-
     # HTTP Clients for Social Media APIs
     "httpx==0.26.0",
     "tweepy==4.14.0",
     "praw==7.7.1",
     "linkedin-api==2.0.1",
-
     # Background Tasks & Async
     "celery[redis]==5.5.3",
     "aiofiles==23.2.1",
-
     # Validation & Serialization
-    "pydantic==2.11.7",
+    "pydantic[email]==2.11.7",
     "pydantic-settings==2.10.1",
-
+    "pydantic==2.11.7",
     # Utilities
     "python-dotenv==1.0.0",
     "structlog==23.2.0",
     "click==8.1.7",
     "rich==13.7.0",
-
     # Testing (keeping in main for integration tests)
     "pytest==7.4.4",
     "pytest-asyncio==0.23.3",
