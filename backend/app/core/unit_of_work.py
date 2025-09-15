@@ -4,8 +4,8 @@ Unit of Work with workspace repository
 
 from abc import ABC, abstractmethod
 from typing import AsyncGenerator
-from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import Depends
 from app.database import get_async_session
 from app.repositories.user_repository import UserRepository
 from app.repositories.workspace_repository import WorkspaceRepository
@@ -66,23 +66,20 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
         await self.session.close()
 
 
-@asynccontextmanager
-async def get_unit_of_work() -> AsyncGenerator[AbstractUnitOfWork, None]:
+async def get_unit_of_work(
+    session: AsyncSession = Depends(get_async_session),
+) -> AsyncGenerator[AbstractUnitOfWork, None]:
     """Get Unit of Work instance as async context manager"""
-    async with get_async_session() as session:
-        uow = SqlAlchemyUnitOfWork(session)
-        try:
-            async with uow:
-                yield uow
-        except Exception:
-            # Exception handling is done in __aexit__
-            raise
+    uow = SqlAlchemyUnitOfWork(session)
+    async with uow:
+        yield uow
 
 
-async def get_unit_of_work_dependency() -> AbstractUnitOfWork:
+async def get_unit_of_work_dependency(
+    session: AsyncSession = Depends(get_async_session),
+) -> AbstractUnitOfWork:
     """
     FastAPI dependency for Unit of Work
     Use this with Depends() in your route handlers
     """
-    async with get_async_session() as session:
-        return SqlAlchemyUnitOfWork(session)
+    return SqlAlchemyUnitOfWork(session)

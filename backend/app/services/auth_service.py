@@ -2,14 +2,13 @@
 Async authentication service with proper transaction management
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from fastapi import Request, Response
 from supertokens_python.recipe.emailpassword.asyncio import sign_up, sign_in
 from supertokens_python.recipe.session.asyncio import create_new_session
 from app.core.unit_of_work import AbstractUnitOfWork
 from app.schemas.auth import SignUpRequest, SignInRequest, UserResponse
-from app.core.exceptions import AuthenticationError, ValidationError
-from app.core.utils import handle_supertokens_session
+from app.core.exceptions import AuthenticationError
 import structlog
 
 logger = structlog.get_logger()
@@ -43,7 +42,7 @@ class AuthService:
                 # Now create user profile in our database (within transaction)
                 user_profile = await self.uow.users.create(
                     {
-                        "user_id": st_result.user.user_id,
+                        "user_id": st_result.user.id,
                         "name": signup_request.name,
                         "display_name": signup_request.display_name,
                         "timezone": signup_request.timezone,
@@ -217,4 +216,3 @@ class AuthService:
                 "Social auth callback failed", user_id=supertokens_user_id, error=str(e)
             )
             raise AuthenticationError("Failed to complete social authentication")
-
