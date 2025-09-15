@@ -1,37 +1,29 @@
 import os
-import sys
 from logging.config import fileConfig
-
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-
+from sqlalchemy import engine_from_config, pool
 from alembic import context
-
-# --- FIXED PATH CONFIGURATION ---
-# Get the current directory (migrations folder)
-current_dir = os.path.dirname(os.path.abspath(__file__))
-# Get the project root directory (one level up from migrations)
-project_root = os.path.dirname(current_dir)
-# Add project root to Python path
-sys.path.insert(0, project_root)
-
-# Import your Base metadata from your models
-from app.models.base import Base
-# --- END FIXED LINES ---
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
 # Interpret the config file for Python logging.
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+fileConfig(config.config_file_name)
 
-# Set target metadata
+# Set the database URL from environment variable
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL is None:
+    raise ValueError("DATABASE_URL environment variable is not set")
+
+config.set_main_option("sqlalchemy.url", DATABASE_URL)
+
+# Import your models here
+from app.models import Base  # replace with your declarative base  # noqa: E402
+
 target_metadata = Base.metadata
 
-def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode."""
+
+def run_migrations_offline():
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
@@ -44,19 +36,15 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def run_migrations_online() -> None:
-    """Run migrations in 'online' mode."""
+def run_migrations_online():
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        config.get_section(config.config_ini_section),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, 
-            target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

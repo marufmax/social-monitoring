@@ -31,7 +31,7 @@ services:
     container_name: smm_migration
     command: [ "alembic", "upgrade", "head" ]
     environment:
-      - DATABASE_URL=postgresql://smm_user:${POSTGRES_PASSWORD:-dev_password}@postgres:5432/social_monitor
+      - DATABASE_URL=postgresql+psycopg://smm_user:dev_password@postgres:5432/social_monitor
     volumes:
       - ./app:/app/app
       - ./migrations:/app/migrations
@@ -81,7 +81,7 @@ services:
       timeout: 3s
       retries: 5
   opensearch:
-    image: opensearchproject/opensearch:2.11.0
+    image: opensearchproject/opensearch:3.2.0
     container_name: smm_opensearch
     environment:
       - cluster.name=smm-cluster
@@ -111,7 +111,7 @@ services:
       timeout: 10s
       retries: 5
   opensearch-dashboards:
-    image: opensearchproject/opensearch-dashboards:2.11.0
+    image: opensearchproject/opensearch-dashboards:3
     container_name: smm_dashboards
     ports:
       - "5601:5601"

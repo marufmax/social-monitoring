@@ -1,4 +1,4 @@
-from pydantic import Field, validator
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 import os
@@ -10,10 +10,7 @@ load_dotenv()
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False,
-        extra="ignore"
+        env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="ignore"
     )
 
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-here")
@@ -24,23 +21,22 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = Field(default="development", description="Environment name")
 
     # Database Settings
-    DATABASE_URL: str = os.getenv("DATABASE_URL",
-                                  "postgresql+psycopg://postgres:postgres@localhost:5432/social_monitoring")
+    DATABASE_URL: str = os.getenv(
+        "DATABASE_URL",
+        "postgresql+psycopg://postgres:postgres@postgres:5432/social_monitoring",
+    )
 
     # Redis Settings
     REDIS_URL: str = Field(
-        default="redis://localhost:6379/0",
-        description="Redis connection URL"
+        default="redis://localhost:6379/0", description="Redis connection URL"
     )
 
     # OpenSearch Settings
     OPENSEARCH_URL: str = Field(
-        default="http://opensearch:9200",
-        description="OpenSearch connection URL"
+        default="http://opensearch:9200", description="OpenSearch connection URL"
     )
     OPENSEARCH_INDEX_PREFIX: str = Field(
-        default="smm",
-        description="Prefix for OpenSearch indices"
+        default="smm", description="Prefix for OpenSearch indices"
     )
 
     @property
@@ -52,7 +48,6 @@ class Settings(BaseSettings):
     def is_development(self) -> bool:
         """Check if running in development environment."""
         return self.ENVIRONMENT.lower() == "development"
-
 
 
 @lru_cache()
