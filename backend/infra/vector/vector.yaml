@@ -1,0 +1,103 @@
+data_dir: /var/lib/vector
+
+log_schema:
+  timestamp_key: "@timestamp"
+  host_key: "host"
+  message_key: "message"
+
+api:
+  enabled: true
+  address: "0.0.0.0:8686"
+
+sources:
+  docker_logs:
+    type: docker_logs
+    include_containers:
+      - "smm_api"
+      - "smm_processor"
+      - "smm_collectors"
+      - "smm_supertokens_dev"
+    exclude_containers:
+      - "smm_vector"
+      - "smm_opensearch"
+      - "smm_postgres"
+      - "smm_redis"
+    # Add more metadata extraction
+    auto_partial_merge: true
+    partial_event_marker_field: "_partial"
+
+    retry_backoff_secs: 2
+    multiline:
+      start_pattern: '^(\d{4}-\d{2}-\d{2}|\{|INFO|ERROR|WARN|DEBUG)'
+      mode: "halt_before"
+      condition_pattern: '^(\d{4}-\d{2}-\d{2}|\{|INFO|ERROR|WARN|DEBUG)'
+      timeout_ms: 1000
+
+transforms:
+  parse_docker:
+    type: remap
+    inputs: ["docker_logs"]
+    source: |
+      .environment = "${VECTOR_ENVIRONMENT}"
+      .cluster = "${VECTOR_CLUSTER_NAME}"
+      .app_name = "${VECTOR_APP_NAME}"
+      .container_name = .container_name
+      .index = "smm-logs"  # Set index unconditionally
+      .@timestamp = parse_timestamp(.time, format: "%+") ?? now()
+      del(.time)
+      
+      if is_object(.label) {
+        ."label.com.docker.compose.project" = string!(.label."com.docker.compose.project")
+        ."label.com.docker.compose.service" = string!(.label."com.docker.compose.service")
+        del(.label)
+      }
+      
+      # Parse message only if it exists and is a string
+      if exists(.message) {
+          msg, err = to_string(.message)
+          if err == null {
+              parsed, perr = parse_json(msg)
+              if perr == null && is_object(parsed) && is_object(.) {
+                  ., merr = merge(., parsed)
+              }
+          }
+      }
+sinks:
+  opensearch:
+    type: elasticsearch
+    inputs: ["parse_docker"]
+    endpoints: ["http://${OPENSEARCH_HOST:-opensearch}:${OPENSEARCH_PORT:-9200}"]
+    api_version: "v8"
+    mode: bulk
+    bulk:
+      action: "index"
+      index: "logs-${VECTOR_ENVIRONMENT:-dev}-%Y.%m.%d"
+      # If you need to force a refresh, use this (not recommended for production):
+      # refresh: true
+    compression: gzip
+    healthcheck:
+      enabled: true
+    batch:
+      max_bytes: 10485760  # 10MB
+      max_events: 1000
+      timeout_secs: 30
+    request:
+      concurrency: "adaptive"
+      retry_attempts: 3
+      retry_initial_backoff_secs: 1
+      retry_max_duration_secs: 300
+      timeout_secs: 60
+      retry_jitter_mode: "Full"
+    request_retry_partial: false
+    encoding:
+      timestamp_format: "rfc3339"
+      except_fields: ["raw_message", "source", "file", "_partial"]
+    doc_type: "_doc"
+
+
+  debug_console:
+    type: console
+    inputs: [parse_docker]
+    target: stdout
+    encoding:
+      codec: json

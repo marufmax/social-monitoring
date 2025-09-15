@@ -1,18 +1,40 @@
+import time
+import uuid
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
-from app.core.logging import logger
-import time
+import structlog
+
+logger = structlog.get_logger()
+
 
 class LoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        request_id = str(uuid.uuid4())
+        structlog.contextvars.clear_contextvars()
+        structlog.contextvars.bind_contextvars(
+            request_id=request_id,
+            method=request.method,
+            path=request.url.path,
+            client_ip=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+
         start_time = time.time()
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception as e:
+            process_time = time.time() - start_time
+            logger.error(
+                "unhandled_exception",
+                error=str(e),
+                duration=process_time,
+            )
+            raise
+
         process_time = time.time() - start_time
         logger.info(
             "request",
-            method=request.method,
-            path=request.url.path,
             status_code=response.status_code,
-            duration=f"{process_time:.2f}s"
+            duration=process_time,
         )
         return response

@@ -140,6 +140,43 @@ services:
         - smm_network
       restart: unless-stopped
 
+  vector:
+    image: timberio/vector:0.49.0-alpine
+    container_name: smm_vector
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./infra/vector:/etc/vector:ro
+      - ./infra/vector/data:/var/lib/vector
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    networks:
+      - smm_network
+    environment:
+      VECTOR_CONFIG: /etc/vector/vector.yaml
+      VECTOR_ENVIRONMENT: ${VECTOR_ENVIRONMENT:-dev}
+      VECTOR_CLUSTER_NAME: ${VECTOR_CLUSTER_NAME:-smm-cluster}
+      VECTOR_APP_NAME: ${VECTOR_APP_NAME:-social-media-monitor}
+      VECTOR_INCLUDE_CONTAINERS: ${VECTOR_INCLUDE_CONTAINERS:-smm_.*}
+      VECTOR_EXCLUDE_CONTAINERS: ${VECTOR_EXCLUDE_CONTAINERS:-smm_vector}
+      OPENSEARCH_HOST: ${OPENSEARCH_HOST:-opensearch}
+      OPENSEARCH_PORT: ${OPENSEARCH_PORT:-9200}
+      OPENSEARCH_INDEX: ${OPENSEARCH_INDEX:-logs-${VECTOR_ENVIRONMENT}}
+      OPENSEARCH_AUTH_STRATEGY: ${OPENSEARCH_AUTH_STRATEGY:-none}
+      OPENSEARCH_USER: ${OPENSEARCH_USER:-}
+      OPENSEARCH_PASSWORD: ${OPENSEARCH_PASSWORD:-}
+      RUST_LOG: info
+    healthcheck:
+      test: ["CMD", "vector", "validate", "--config", "/etc/vector/vector.yaml", "--no-environment"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    restart: "no"
+    ports:
+      - "8686:8686"
+
   # Stream Processor
   processor:
     build:

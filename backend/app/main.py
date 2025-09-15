@@ -1,9 +1,16 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from app.api.universal.router import api_universal_router
+from app.config import settings
+from app.core.logging import setup_logging
 from app.core.middleware import LoggingMiddleware
 from app.api.v1.router import apiV1_router
 from app.database import async_engine as engine, Base
+import structlog
+
+# Application Logging
+setup_logging(service_name="smm_api", env=settings.ENVIRONMENT)
+logger = structlog.get_logger()
 
 
 @asynccontextmanager
