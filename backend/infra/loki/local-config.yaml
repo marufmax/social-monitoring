@@ -1,0 +1,57 @@
+auth_enabled: false
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9095
+common:
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+schema_config:
+  configs:
+    - from: 2020-10-24
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+query_range:
+  results_cache:
+    cache:
+      embedded_cache:
+        enabled: true
+        max_size_mb: 100
+
+pattern_ingester:
+  enabled: true
+  metric_aggregation:
+    loki_address: loki:3100
+
+# Correct compactor configuration for Loki 3.x
+compactor:
+  working_directory: /loki/compactor
+  delete_request_store: filesystem  # This replaces shared_store
+  retention_enabled: true
+  compaction_interval: 10m
+  retention_delete_delay: 2h
+  retention_delete_worker_count: 150
+
+querier:
+  max_concurrent: 4
+
+limits_config:
+  retention_period: 168h  # 7 days retention
+  max_query_length: 721h
+  max_query_parallelism: 32
+  max_streams_per_user: 0
+  max_global_streams_per_user: 10000
+  metric_aggregation_enabled: true
+
+analytics:
+  reporting_enabled: false

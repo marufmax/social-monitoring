@@ -18,7 +18,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      opensearch:
+      loki:
         condition: service_healthy
     networks:
       - smm_network
@@ -80,48 +80,75 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-  opensearch:
-    image: opensearchproject/opensearch:3.2.0
-    container_name: smm_opensearch
-    environment:
-      - cluster.name=smm-cluster
-      - node.name=smm-node1
-      - discovery.type=single-node
-      - bootstrap.memory_lock=true
-      - "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g"
-      - "DISABLE_INSTALL_DEMO_CONFIG=true"
-      - "DISABLE_SECURITY_PLUGIN=true"
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-      nofile:
-        soft: 65536
-        hard: 65536
+  loki:
+    image: grafana/loki:3.4.1
+    container_name: smm_loki
     ports:
-      - "9200:9200"
-      - "9600:9600"
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
     volumes:
-      - opensearch_data:/usr/share/opensearch/data
+      - loki_data:/loki
+      - ./infra/loki/local-config.yaml:/etc/loki/local-config.yaml
     networks:
       - smm_network
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:3100/ready || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
-  opensearch-dashboards:
-    image: opensearchproject/opensearch-dashboards:3
-    container_name: smm_dashboards
+  grafana:
+    image: grafana/grafana:12.1.1
+    container_name: smm_grafana
     ports:
-      - "5601:5601"
+      - "3000:3000"
     environment:
-      OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
-      DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning
     depends_on:
-      - opensearch
+      - loki
     networks:
       - smm_network
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
+  alloy:
+    image: grafana/alloy:v1.10.1
+    container_name: smm_alloy
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./infra/alloy:/etc/alloy:ro
+      - ./infra/alloy/data:/var/lib/alloy
+    networks:
+      - smm_network
+    environment:
+      ALLOY_CONFIG: /etc/alloy/config.alloy
+      ALLOY_ENVIRONMENT: ${ALLOY_ENVIRONMENT:-dev}
+      ALLOY_CLUSTER_NAME: ${ALLOY_CLUSTER_NAME:-smm-cluster}
+      ALLOY_APP_NAME: ${ALLOY_APP_NAME:-social-media-monitor}
+      ALLOY_INCLUDE_CONTAINERS: ${ALLOY_INCLUDE_CONTAINERS:-smm_.*}
+      ALLOY_EXCLUDE_CONTAINERS: ${ALLOY_EXCLUDE_CONTAINERS:-smm_alloy}
+      LOKI_HOST: ${LOKI_HOST:-loki}
+      LOKI_PORT: ${LOKI_PORT:-3100}
+    command: run --storage.path=/var/lib/alloy /etc/alloy/config.alloy
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:12345/-/healthy || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    ports:
+      - "5266:12345"
+    restart: no
 
   supertokens:
       image: registry.supertokens.io/supertokens/supertokens-postgresql:11.0.6
@@ -140,43 +167,6 @@ services:
         - smm_network
       restart: unless-stopped
 
-  vector:
-    image: timberio/vector:0.49.0-alpine
-    container_name: smm_vector
-    volumes:
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./infra/vector:/etc/vector:ro
-      - ./infra/vector/data:/var/lib/vector
-    depends_on:
-      opensearch:
-        condition: service_healthy
-    networks:
-      - smm_network
-    environment:
-      VECTOR_CONFIG: /etc/vector/vector.yaml
-      VECTOR_ENVIRONMENT: ${VECTOR_ENVIRONMENT:-dev}
-      VECTOR_CLUSTER_NAME: ${VECTOR_CLUSTER_NAME:-smm-cluster}
-      VECTOR_APP_NAME: ${VECTOR_APP_NAME:-social-media-monitor}
-      VECTOR_INCLUDE_CONTAINERS: ${VECTOR_INCLUDE_CONTAINERS:-smm_.*}
-      VECTOR_EXCLUDE_CONTAINERS: ${VECTOR_EXCLUDE_CONTAINERS:-smm_vector}
-      OPENSEARCH_HOST: ${OPENSEARCH_HOST:-opensearch}
-      OPENSEARCH_PORT: ${OPENSEARCH_PORT:-9200}
-      OPENSEARCH_INDEX: ${OPENSEARCH_INDEX:-logs-${VECTOR_ENVIRONMENT}}
-      OPENSEARCH_AUTH_STRATEGY: ${OPENSEARCH_AUTH_STRATEGY:-none}
-      OPENSEARCH_USER: ${OPENSEARCH_USER:-}
-      OPENSEARCH_PASSWORD: ${OPENSEARCH_PASSWORD:-}
-      RUST_LOG: info
-    healthcheck:
-      test: ["CMD", "vector", "validate", "--config", "/etc/vector/vector.yaml", "--no-environment"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 40s
-    restart: "no"
-    ports:
-      - "8686:8686"
-
   # Stream Processor
   processor:
     build:
@@ -194,7 +184,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      opensearch:
+      loki:
         condition: service_healthy
     networks:
       - smm_network
@@ -227,4 +217,5 @@ networks:
 volumes:
   postgres_data:
   redis_data:
-  opensearch_data:
+  loki_data:
+  grafana_data:

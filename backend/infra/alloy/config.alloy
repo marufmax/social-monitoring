@@ -1,0 +1,95 @@
+// #####################################
+// #### Logging Configuration ####
+// #####################################
+
+// Discover Docker containers and extract metadata.
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+  refresh_interval = "5s"
+}
+
+// Define relabeling rules to create a service name from the container name
+// and filter out logs from alloy, grafana, and loki containers.
+discovery.relabel "docker_logs" {
+  targets = discovery.docker.containers.targets
+  
+  // Extract container name from the full container name
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex = "/(.*)"
+    target_label = "container_name"
+  }
+  
+  // Add instance label with hostname
+  rule {
+    target_label = "instance"
+    replacement = env("ALLOY_APP_NAME")
+  }
+  
+  // Add cluster label
+  rule {
+    target_label = "cluster"
+    replacement = env("ALLOY_CLUSTER_NAME")
+  }
+  
+  // Add environment label
+  rule {
+    target_label = "environment"
+    replacement = env("ALLOY_ENVIRONMENT")
+  }
+  
+  // Filter out logs from alloy container
+  rule {
+    source_labels = ["container_name"]
+    regex = ".*alloy.*"
+    action = "drop"
+  }
+  
+  // Filter out logs from grafana container
+  rule {
+    source_labels = ["container_name"]
+    regex = ".*grafana.*"
+    action = "drop"
+  }
+  
+  // Filter out logs from loki container
+  rule {
+    source_labels = ["container_name"]
+    regex = ".*loki.*"
+    action = "drop"
+  }
+
+  rule {
+    source_labels = ["container_name"]
+    regex = env("ALLOY_INCLUDE_CONTAINERS")
+    action = "keep"
+  }
+  
+  // Optional: Exclude containers matching the pattern
+  rule {
+    source_labels = ["container_name"]
+    regex = env("ALLOY_EXCLUDE_CONTAINERS")
+    action = "drop"
+  }
+}
+
+// Configure a loki.source.docker component to collect logs from Docker containers.
+loki.source.docker "default" {
+  host = "unix:///var/run/docker.sock"
+  targets = discovery.relabel.docker_logs.output
+  forward_to = [loki.write.local.receiver]
+  
+  // Add labels to all log entries
+  labels = {
+    cluster = env("ALLOY_CLUSTER_NAME"),
+    environment = env("ALLOY_ENVIRONMENT"),
+    job = "integrations/docker",
+  }
+}
+
+// Configure loki.write to send logs to Loki.
+loki.write "local" {
+  endpoint {
+    url = "http://" + env("LOKI_HOST") + ":" + env("LOKI_PORT") + "/loki/api/v1/push"
+  }
+}
