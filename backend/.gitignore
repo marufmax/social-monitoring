@@ -60,4 +60,4 @@ Thumbs.db
 data/
 uploads/
 temp/
-infra/fluentbit/storage/
+infra/alloy/data
