@@ -51,7 +51,7 @@ async def signup(
             detail={"message": str(e), "field": getattr(e, "field", None)},
         )
     except Exception as e:
-        logger.error("Signup failed", error=str(e))
+        logger.error("Signup failed", error=str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Registration failed",
