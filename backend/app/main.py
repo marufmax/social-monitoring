@@ -18,7 +18,7 @@ from app.database import async_engine as engine, Base
 
 # Application Logging
 logger_provider, tracer_provider = setup_logging(
-    service_name="smm_api",
+    service_name="smm_api_application",
     env=settings.ENVIRONMENT,
     otlp_endpoint=settings.OTLP_ENDPOINT,
     log_level=settings.LOG_LEVEL.value,

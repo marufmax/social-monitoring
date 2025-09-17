@@ -54,21 +54,7 @@ discovery.relabel "docker_logs" {
   // Filter out logs from alloy container
   rule {
     source_labels = ["container_name"]
-    regex = ".*alloy.*"
-    action = "drop"
-  }
-
-  // Filter out logs from grafana container
-  rule {
-    source_labels = ["container_name"]
-    regex = ".*grafana.*"
-    action = "drop"
-  }
-
-  // Filter out logs from loki container
-  rule {
-    source_labels = ["container_name"]
-    regex = ".*loki.*"
+    regex = "smm_alloy|smm_grafana|smm_loki|.*smm_api.*"
     action = "drop"
   }
 

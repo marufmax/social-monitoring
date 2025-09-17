@@ -1,15 +1,16 @@
 # app/core/logging.py
 """
 Production-grade logging configuration for FastAPI with OpenTelemetry and Loki integration.
-- Console logs (colorful in dev)
-- JSON structured logs for OTLP/Grafana
-- Security, performance, and Loki processors
+- Colorful console logs in development
+- JSON structured logs for OTLP/Grafana without ANSI colors
+- Optimized for searchability with clear label/body separation
 """
 
 import logging
 import sys
 import os
 import time
+import json
 from typing import Any, Dict, Optional, Tuple
 from contextvars import ContextVar
 from functools import lru_cache
@@ -33,47 +34,103 @@ correlation_id_ctx: ContextVar[Optional[str]] = ContextVar(
     "correlation_id", default=None
 )
 
+# ---------------------- Constants ----------------------
+
+# Low-cardinality fields that should be labels in Loki
+LABEL_FIELDS = {
+    "service",  # Service name
+    "environment",  # Environment (production, staging, dev)
+    "level",  # Log level (INFO, WARNING, ERROR, etc.)
+    "logger_name",  # Logger name
+}
+
+# High-cardinality fields that should be in the log body
+BODY_FIELDS = {
+    "timestamp",  # ISO 8601 timestamp
+    "request_id",  # Request ID
+    "user_id",  # User ID
+    "correlation_id",  # Correlation ID
+    "trace_id",  # OpenTelemetry trace ID
+    "span_id",  # OpenTelemetry span ID
+    "error",  # Error message
+    "stacktrace",  # Stack trace
+    "duration_ms",  # Duration in milliseconds
+    "response_size_bytes",  # Response size in bytes
+    "status_code",  # HTTP status code
+    "memory_mb",  # Memory usage in MB
+    "cpu_percent",  # CPU usage percentage
+    "event",  # Event message
+}
+
+# Fields that indicate alertable conditions
+ALERT_FIELDS = {
+    "error",
+    "duration_ms",
+    "status_code",
+    "memory_mb",
+    "cpu_percent",
+}
 
 # ---------------------- Processors ----------------------
 
 
 class LokiOptimizedProcessor:
-    """Adds Loki-optimized labels and trace info."""
+    """Separates labels from body and adds trace/context info."""
 
     def __init__(self, service_name: str, environment: str):
         self.service_name = service_name
         self.environment = environment
 
     def __call__(self, logger, name, event_dict):
+        # Extract the log level
+        level = event_dict.get("level", "info").upper()
+
+        # Create labels dictionary (low-cardinality fields)
+        labels = {
+            "service": self.service_name,
+            "environment": self.environment,
+            "level": level,
+            "logger_name": name,
+        }
+
+        # Create body dictionary (high-cardinality fields)
+        body = {
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "event": event_dict.get("event", ""),
+        }
+
+        # Add trace information if available
         current_span = trace.get_current_span()
         if current_span.is_recording():
             span_context = current_span.get_span_context()
-            event_dict.update(
+            body.update(
                 {
                     "trace_id": format(span_context.trace_id, "032x"),
                     "span_id": format(span_context.span_id, "016x"),
                     "trace_flags": span_context.trace_flags,
                 }
             )
-        event_dict.update(
+
+        # Add correlation information
+        body.update(
             {
                 "request_id": request_id_ctx.get(),
                 "user_id": user_id_ctx.get(),
                 "correlation_id": correlation_id_ctx.get(),
             }
         )
+
+        # Add remaining event_dict fields to body
+        for key, value in event_dict.items():
+            if key not in ["level", "event"]:
+                body[key] = value
+
         # Remove None values
-        event_dict = {k: v for k, v in event_dict.items() if v is not None}
-        if "timestamp" not in event_dict:
-            event_dict["timestamp"] = time.time_ns()
-        event_dict.update(
-            {
-                "service_name": self.service_name,
-                "environment": self.environment,
-                "logger_name": name,
-            }
-        )
-        return event_dict
+        body = {k: v for k, v in body.items() if v is not None}
+
+        # Return a dictionary that separates labels and body
+        result = {"_labels": labels, "_body": body}
+        return result
 
 
 class SecurityProcessor:
@@ -113,10 +170,14 @@ class SecurityProcessor:
 
 
 class PerformanceProcessor:
-    """Adds performance metrics for DEBUG and ERROR logs."""
+    """Adds performance metrics for all logs in production, DEBUG and ERROR in development."""
 
     def __call__(self, logger, name, event_dict):
-        if event_dict.get("level") in ("error", "debug"):
+        is_prod = settings.ENVIRONMENT == EnvEnum.PRODUCTION.value
+        level = event_dict.get("level", "info").lower()
+
+        # Always add performance metrics in production, or for DEBUG/ERROR in dev
+        if is_prod or level in ("debug", "error"):
             try:
                 import psutil
 
@@ -130,6 +191,63 @@ class PerformanceProcessor:
         return event_dict
 
 
+class StripAnsiProcessor:
+    """Removes ANSI color codes from log output."""
+
+    def __call__(self, logger, name, event_dict):
+        import re
+
+        if isinstance(event_dict.get("event"), str):
+            event_dict["event"] = re.sub(
+                r"\x1B\[[0-?]*[ -/]*[@-~]", "", event_dict["event"]
+            )
+        return event_dict
+
+
+class ExceptionFormatterProcessor:
+    """Formats exception information consistently for better searchability."""
+
+    def __call__(self, logger, name, event_dict):
+        if "exc_info" in event_dict:
+            exc_info = event_dict.pop("exc_info")
+            if exc_info:
+                # Handle both tuple and exception object
+                if isinstance(exc_info, tuple):
+                    exc_type, exc_value, exc_tb = exc_info
+                elif isinstance(exc_info, BaseException):
+                    exc_type = type(exc_info)
+                    exc_value = exc_info
+                    exc_tb = exc_info.__traceback__
+                else:
+                    # If it's not a tuple or exception, skip processing
+                    return event_dict
+
+                # Format exception and add to body
+                import traceback
+
+                event_dict["error"] = f"{exc_type.__name__}: {str(exc_value)}"
+                event_dict["stacktrace"] = "".join(
+                    traceback.format_exception(exc_type, exc_value, exc_tb)
+                )
+        return event_dict
+
+
+class LokiFormatter:
+    """Formats logs specifically for Loki with labels and body separation."""
+
+    def __call__(self, logger, name, event_dict):
+        # If the event_dict has _labels and _body, format for Loki
+        if "_labels" in event_dict and "_body" in event_dict:
+            labels = event_dict["_labels"]
+            body = event_dict["_body"]
+
+            # Convert to JSON string for Loki
+            return json.dumps({"labels": labels, "body": body})
+
+        # Fallback to regular JSON formatting
+        return json.dumps(event_dict)
+
+
 # ---------------------- Configuration ----------------------
 
 
@@ -139,11 +257,11 @@ def get_log_config() -> Dict[str, Any]:
     return {
         "console_level": logging.DEBUG if is_dev else logging.INFO,
         "otlp_level": logging.INFO if is_dev else logging.WARNING,
-        "include_performance": is_dev or settings.LOG_PERFORMANCE_METRICS,
+        "include_performance": True,  # Always include performance metrics
         "batch_timeout": 5000 if is_dev else 30000,
         "batch_size": 100 if is_dev else 500,
         "max_export_timeout": 30000,
-        "enable_console": is_dev,
+        "enable_console": False,
     }
 
 
@@ -218,29 +336,28 @@ def setup_logging(
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
         structlog.stdlib.PositionalArgumentsFormatter(),
-        structlog.dev.set_exc_info,
         SecurityProcessor(),
+        PerformanceProcessor(),
+        ExceptionFormatterProcessor(),
         LokiOptimizedProcessor(service_name, env),
     ]
-    if config["include_performance"]:
-        base_processors.insert(-1, PerformanceProcessor())
 
-    # Console renderer
+    # Console renderer (colorful in dev)
     console_processors = list(base_processors)
     if config["enable_console"]:
         console_processors.append(structlog.dev.ConsoleRenderer(colors=True))
 
-    # OTLP renderer
+    # OTLP renderer (JSON, no colors, Loki-optimized)
     otlp_processors = list(base_processors)
     otlp_processors.extend(
         [
+            StripAnsiProcessor(),  # Ensure no ANSI codes in OTLP output
             structlog.processors.TimeStamper(fmt="iso"),
-            structlog.processors.JSONRenderer(),
-            structlog.processors.format_exc_info,
+            LokiFormatter(),  # Custom formatter for Loki
         ]
     )
 
-    # Configure structlog
+    # Configure structlog with separate processors for console and OTLP
     structlog.configure(
         processors=console_processors if config["enable_console"] else otlp_processors,
         context_class=dict,
@@ -321,6 +438,13 @@ class LoggerAdapter:
             event, performance=True, duration_ms=round(duration * 1000, 2), **kwargs
         )
 
+    def error(self, event: str, error: Optional[Exception] = None, **kwargs):
+        if error:
+            # Pass the exception object directly - the processor will handle it
+            self.logger.error(event, exc_info=error, **kwargs)
+        else:
+            self.logger.error(event, **kwargs)
+
 
 def get_logger(name: str) -> LoggerAdapter:
     return LoggerAdapter(name)
@@ -348,6 +472,13 @@ def set_correlation_context(
         user_id_ctx.set(user_id)
     if correlation_id:
         correlation_id_ctx.set(correlation_id)
+
+
+def clear_correlation_context() -> None:
+    """Clear all correlation context variables."""
+    request_id_ctx.set(None)
+    user_id_ctx.set(None)
+    correlation_id_ctx.set(None)
 
 
 # ---------------------- Health Check ----------------------
