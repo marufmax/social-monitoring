@@ -1,6 +1,19 @@
-// #####################################
-// #### Logging Configuration ####
-// #####################################
+// Grafana Alloy v1.10.1+ Configuration
+// Supports Docker container logs + OTLP application logs for Social Media Monitor
+
+// ============================================
+// GLOBAL CONFIGURATION BLOCKS
+// ============================================
+
+// Logging configuration block
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+// ============================================
+// DOCKER LOGS COLLECTION PIPELINE
+// ============================================
 
 // Discover Docker containers and extract metadata.
 discovery.docker "containers" {
@@ -12,46 +25,46 @@ discovery.docker "containers" {
 // and filter out logs from alloy, grafana, and loki containers.
 discovery.relabel "docker_logs" {
   targets = discovery.docker.containers.targets
-  
+
   // Extract container name from the full container name
   rule {
     source_labels = ["__meta_docker_container_name"]
     regex = "/(.*)"
     target_label = "container_name"
   }
-  
+
   // Add instance label with hostname
   rule {
     target_label = "instance"
     replacement = env("ALLOY_APP_NAME")
   }
-  
+
   // Add cluster label
   rule {
     target_label = "cluster"
     replacement = env("ALLOY_CLUSTER_NAME")
   }
-  
+
   // Add environment label
   rule {
     target_label = "environment"
     replacement = env("ALLOY_ENVIRONMENT")
   }
-  
+
   // Filter out logs from alloy container
   rule {
     source_labels = ["container_name"]
     regex = ".*alloy.*"
     action = "drop"
   }
-  
+
   // Filter out logs from grafana container
   rule {
     source_labels = ["container_name"]
     regex = ".*grafana.*"
     action = "drop"
   }
-  
+
   // Filter out logs from loki container
   rule {
     source_labels = ["container_name"]
@@ -59,12 +72,13 @@ discovery.relabel "docker_logs" {
     action = "drop"
   }
 
+  // Optional: Include only containers matching the pattern
   rule {
     source_labels = ["container_name"]
     regex = env("ALLOY_INCLUDE_CONTAINERS")
     action = "keep"
   }
-  
+
   // Optional: Exclude containers matching the pattern
   rule {
     source_labels = ["container_name"]
@@ -78,7 +92,7 @@ loki.source.docker "default" {
   host = "unix:///var/run/docker.sock"
   targets = discovery.relabel.docker_logs.output
   forward_to = [loki.write.local.receiver]
-  
+
   // Add labels to all log entries
   labels = {
     cluster = env("ALLOY_CLUSTER_NAME"),
@@ -91,5 +105,100 @@ loki.source.docker "default" {
 loki.write "local" {
   endpoint {
     url = "http://" + env("LOKI_HOST") + ":" + env("LOKI_PORT") + "/loki/api/v1/push"
+  }
+}
+
+// ============================================
+// OTLP LOGS COLLECTION PIPELINE
+// ============================================
+
+// OTLP Receiver: Accept logs from Python applications
+otelcol.receiver.otlp "default" {
+  // gRPC endpoint (default port 4317)
+  grpc {
+    endpoint = "0.0.0.0:4317"
+  }
+
+  // HTTP endpoint (default port 4318)
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+
+  output {
+    logs = [otelcol.processor.batch.default.input]
+  }
+}
+
+// Batch Processor: Improve performance with batching
+otelcol.processor.batch "default" {
+  send_batch_size = 512
+  timeout         = "5s"
+  send_batch_max_size = 1024
+
+  output {
+    logs = [otelcol.processor.attributes.default.input]
+  }
+}
+
+// Attributes Processor: Add service metadata
+otelcol.processor.attributes "default" {
+  // Add deployment metadata
+  action {
+    key    = "deployment.environment"
+    value  = env("ALLOY_ENVIRONMENT")
+    action = "upsert"
+  }
+
+  action {
+    key    = "cluster.name"
+    value  = env("ALLOY_CLUSTER_NAME")
+    action = "upsert"
+  }
+
+  action {
+    key    = "service.namespace"
+    value  = env("ALLOY_APP_NAME")
+    action = "upsert"
+  }
+
+  // Remove sensitive attributes
+  action {
+    key    = "http.request.header.authorization"
+    action = "delete"
+  }
+
+  action {
+    key    = "http.request.header.cookie"
+    action = "delete"
+  }
+
+  output {
+    logs = [otelcol.exporter.otlphttp.loki.input]
+  }
+}
+
+// OTLP Exporter: Send processed logs to Loki's native OTLP endpoint
+otelcol.exporter.otlphttp "loki" {
+  client {
+    endpoint = "http://" + env("LOKI_HOST") + ":" + env("LOKI_PORT") + "/otlp"
+  }
+}
+
+// ============================================
+// LOKI WRITE CONFIGURATION
+// ============================================
+
+// Write processed Docker logs to Loki
+loki.write "default" {
+  endpoint {
+    url = "http://" + env("LOKI_HOST") + ":" + env("LOKI_PORT") + "/loki/api/v1/push"
+  }
+
+  // External labels (applied to all logs from this writer)
+  external_labels = {
+    cluster     = env("ALLOY_CLUSTER_NAME"),
+    environment = env("ALLOY_ENVIRONMENT"),
+    job         = "alloy-docker",
+    source      = "docker",
   }
 }

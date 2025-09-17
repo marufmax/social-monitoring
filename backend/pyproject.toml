@@ -44,6 +44,8 @@ dependencies = [
     "tweepy==4.14.0",
     "praw==7.7.1",
     "linkedin-api==2.0.1",
+    # OpenTelementary
+    "opentelemetry-distro[otlp]>=0.58b0",
     # Background Tasks & Async
     "celery[redis]==5.5.3",
     "aiofiles==23.2.1",

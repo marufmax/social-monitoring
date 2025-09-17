@@ -2,14 +2,14 @@ import asyncio
 from fastapi import APIRouter
 import redis.asyncio as pyredis
 import asyncpg
-from opensearchpy import AsyncOpenSearch
 
-from app.config import Settings, settings
+from app.config import Settings
 from app.database import ASYNC_DATABASE_URL
 
 health_router = APIRouter()
-# --- Health check helpers ---
 
+
+# --- Health check helpers ---
 async def check_database():
     try:
         conn = await asyncpg.connect(ASYNC_DATABASE_URL)
@@ -30,19 +30,6 @@ async def check_redis():
         return f"down ({str(e)})"
 
 
-async def check_opensearch() -> str:
-    try:
-        client = AsyncOpenSearch(
-            hosts=[Settings.OPENSEARCH_HOST],
-            http_compress=True,
-        )
-        health = await client.cluster.health()
-        await client.close()
-        return "ok" if health.get("status") in ["green", "yellow"] else "down"
-    except Exception as e:
-        return f"down ({str(e)})"
-
-
 async def check_collectors():
     # Example: simulate calling external collectors
     try:
@@ -55,15 +42,17 @@ async def check_collectors():
 
 # --- API route ---
 
+
 @health_router.get("/health")
 async def health_check():
-    db, redis, opensearch, collectors = await asyncio.gather(
-        check_database(), check_redis(), check_opensearch(), check_collectors()
+    db, redis, collectors = await asyncio.gather(
+        check_database(), check_redis(), check_collectors()
     )
     return {
-        "status": "healthy" if all(v == "ok" for v in [db, redis, opensearch, collectors]) else "degraded",
+        "status": "healthy"
+        if all(v == "ok" for v in [db, redis, collectors])
+        else "degraded",
         "database": db,
         "redis": redis,
-        "opensearch": opensearch,
         "collectors": collectors,
     }

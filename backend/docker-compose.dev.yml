@@ -13,6 +13,7 @@ services:
       - ./app:/app/app
       - ./collectors:/app/collectors
       - ./processor:/app/processor
+      - ./pyproject.toml:/app/pyproject.toml
     depends_on:
       postgres:
         condition: service_healthy
@@ -81,7 +82,7 @@ services:
       timeout: 3s
       retries: 5
   loki:
-    image: grafana/loki:3.4.1
+    image: grafana/loki:3.5
     container_name: smm_loki
     ports:
       - "3100:3100"
@@ -137,7 +138,7 @@ services:
       ALLOY_CLUSTER_NAME: ${ALLOY_CLUSTER_NAME:-smm-cluster}
       ALLOY_APP_NAME: ${ALLOY_APP_NAME:-social-media-monitor}
       ALLOY_INCLUDE_CONTAINERS: ${ALLOY_INCLUDE_CONTAINERS:-smm_.*}
-      ALLOY_EXCLUDE_CONTAINERS: ${ALLOY_EXCLUDE_CONTAINERS:-smm_alloy}
+      ALLOY_EXCLUDE_CONTAINERS: ${ALLOY_EXCLUDE_CONTAINERS:-smm_alloy|smm_api}
       LOKI_HOST: ${LOKI_HOST:-loki}
       LOKI_PORT: ${LOKI_PORT:-3100}
     command: run --storage.path=/var/lib/alloy /etc/alloy/config.alloy
@@ -148,6 +149,8 @@ services:
       retries: 5
     ports:
       - "5266:12345"
+      - "4317:4317"
+      - "4318:4318"
     restart: no
 
   supertokens:

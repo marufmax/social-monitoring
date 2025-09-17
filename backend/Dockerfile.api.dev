@@ -1,4 +1,3 @@
-# --- Base builder stage ---
 FROM python:3.11-slim as builder
 
 # Install uv
@@ -16,12 +15,12 @@ WORKDIR /app
 # Copy dependency files
 COPY pyproject.toml uv.lock* ./
 
-# Generate lock + install all deps (including dev)
+# Install dependencies into venv
 RUN if [ -f uv.lock ]; then \
-        echo "Using existing lock file" && \
+        echo "=== Using existing lock file ===" && \
         uv sync --frozen --all-extras --dev --no-cache; \
     else \
-        echo "No lock file found, generating..." && \
+        echo "=== No lock file found, generating and installing ===" && \
         uv lock && \
         uv sync --all-extras --dev --no-cache; \
     fi
@@ -49,12 +48,13 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Non-root user
 RUN useradd --create-home --shell /bin/bash app
+USER app
 WORKDIR /app
 
 # Copy dependency files
 COPY --chown=app:app pyproject.toml uv.lock* ./
 
-# Install dependencies - handle missing lock file gracefully
+# Install dependencies as `app` user (so .venv is writable)
 RUN if [ -f uv.lock ]; then \
         echo "=== Using existing lock file ===" && \
         uv sync --frozen --all-extras --dev --no-cache; \
@@ -66,8 +66,6 @@ RUN if [ -f uv.lock ]; then \
 
 # Copy code
 COPY --chown=app:app . .
-
-USER app
 
 # Activate venv by default
 ENV PATH="/app/.venv/bin:$PATH" \

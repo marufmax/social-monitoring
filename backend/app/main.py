@@ -9,7 +9,11 @@ from app.database import async_engine as engine, Base
 import structlog
 
 # Application Logging
-setup_logging(service_name="smm_api", env=settings.ENVIRONMENT)
+setup_logging(
+    service_name="smm_api",
+    env=settings.ENVIRONMENT,
+    otlp_endpoint=settings.OTLP_ENDPOINT,
+)
 logger = structlog.get_logger()
 
 

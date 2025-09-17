@@ -2,7 +2,7 @@
 """
 Development setup script for Social Media Monitor
 """
-import os
+
 import subprocess
 import sys
 from pathlib import Path
@@ -12,7 +12,9 @@ def run_command(cmd, description):
     """Run a shell command with error handling"""
     print(f"🔧 {description}...")
     try:
-        result = subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
+        result = subprocess.run(
+            cmd, shell=True, check=True, capture_output=True, text=True
+        )
         print(f"✅ {description} completed")
         return result.stdout
     except subprocess.CalledProcessError as e:
@@ -38,14 +40,14 @@ def main():
     # Start development services
     run_command(
         "docker-compose -f docker-compose.dev.yml up -d",
-        "Starting development services"
+        "Starting development services",
     )
 
     # Wait for services to be healthy
     print("⏳ Waiting for services to be ready...")
     run_command(
         "sleep 30",  # Give services time to start
-        "Waiting for services"
+        "Waiting for services",
     )
 
     # Create database tables (when we add migration scripts)
@@ -59,8 +61,6 @@ def main():
     print("   • PostgreSQL: localhost:5432")
     print("   • Redis: localhost:6379")
     print("   • RedisInsight: http://localhost:8001")
-    print("   • OpenSearch: http://localhost:9200")
-    print("   • OpenSearch Dashboards: http://localhost:5601")
     print("   • SuperTokens: http://localhost:3567")
     print("\n🚀 To start the API server:")
     print("   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000")

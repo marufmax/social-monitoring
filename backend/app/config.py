@@ -1,3 +1,5 @@
+from enum import Enum
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
@@ -6,6 +8,12 @@ from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
+
+
+class EnvEnum(Enum):
+    DEVELOPMENT = "development"
+    PRODUCTION = "production"
+    TESTING = "testing"
 
 
 class Settings(BaseSettings):
@@ -19,6 +27,9 @@ class Settings(BaseSettings):
     DEBUG: bool = Field(default=False, description="Enable debug mode")
     TESTING: bool = Field(default=False, description="Enable testing mode")
     ENVIRONMENT: str = Field(default="development", description="Environment name")
+    OTLP_ENDPOINT: str = Field(
+        default="http://alloy:4317", description="OpenTelemetry OTLP endpoint"
+    )
 
     # Database Settings
     DATABASE_URL: str = os.getenv(
@@ -29,14 +40,6 @@ class Settings(BaseSettings):
     # Redis Settings
     REDIS_URL: str = Field(
         default="redis://localhost:6379/0", description="Redis connection URL"
-    )
-
-    # OpenSearch Settings
-    OPENSEARCH_URL: str = Field(
-        default="http://opensearch:9200", description="OpenSearch connection URL"
-    )
-    OPENSEARCH_INDEX_PREFIX: str = Field(
-        default="smm", description="Prefix for OpenSearch indices"
     )
 
     @property
